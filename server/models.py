@@ -1,7 +1,10 @@
 from __future__ import unicode_literals
+
+from django.contrib.auth.base_user import BaseUserManager
 from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser
+from DogFinderServer import settings
 import datetime
 
 
@@ -22,7 +25,6 @@ import datetime
 #     votes = models.IntegerField(default=0)
 #     def __str__(self):
 #         return self.choice_text
-from DogFinderServer import settings
 
 
 class Coordinate(models.Model):
@@ -71,19 +73,54 @@ class DogStatus(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class CustomUserManager(BaseUserManager):
+    def create_user(self, fb_id, fb_name, fb_token, fb_token_exp, email, telephone, birth_date, password=None):
+        user = self.model(fb_id=fb_id, fb_name=fb_name, fb_token=fb_token, fb_token_exp=fb_token_exp, email=email, telephone=telephone, birth_date=birth_date)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, fb_id, fb_name, fb_token, fb_token_exp, email, telephone, birth_date, password=None):
+        user = self.create_user(fb_id, fb_name, fb_token, fb_token_exp, email, telephone, birth_date)
+        user.role = 1
+        user.save(using=self._db)
+        return user
+
 
 class User(AbstractBaseUser):
     fb_id = models.CharField(max_length=30, unique=True)
     fb_name = models.CharField(max_length=100)
     fb_token = models.TextField()
     fb_token_exp = models.DateTimeField(blank=True, null=True)
+    role = models.IntegerField(default=1)
     email = models.CharField(max_length=50, null=True)
     telephone = models.CharField(max_length=20, null=True)
     birth_date = models.DateTimeField(blank=True, null=True)
+    active = models.BooleanField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = CustomUserManager()
 
     USERNAME_FIELD = 'fb_id'
     REQUIRED_FIELDS = ['email']
+
+    def is_active(self):
+        return self.active
+
+    def get_full_name(self):
+        return self.fb_id
+
+    def get_short_name(self):
+        return self.fb_id
+
+    @property
+    def is_staff(self):
+        return True if self.role == 0 else False
+
+    def has_perm(self, perm, obj=None):
+        return self.is_staff()
+
+    def has_module_perms(self, app_label):
+        return self.is_staff()
 
 
 class LostAndFound(models.Model):
