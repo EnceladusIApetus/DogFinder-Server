@@ -28,9 +28,11 @@ DEBUG = True
 ALLOWED_HOSTS = []
 
 
+
 # Application definition
 
 INSTALLED_APPS = [
+    'server.apps.ServerConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -76,8 +78,12 @@ WSGI_APPLICATION = 'DogFinderServer.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'dogfinder',
+        'USER': 'root',
+        'PASSWORD': '7571179',
+        'HOST': '127.0.0.1',
+        'PORT': '3306'
     }
 }
 
@@ -100,6 +106,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+AUTH_USER_MODEL = 'server.User'
+
+AUTHENTICATION_BACKENDS = ['server.AuthenBackends.FBBackend']
+
+LOGIN_URL = '/server/login'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.10/topics/i18n/
