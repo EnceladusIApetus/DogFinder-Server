@@ -1,0 +1,5 @@
+<form action="{% url 'server:login' %}" method="post">
+    {% csrf_token %}
+    <input type="text" name="fb_id" />
+    <input type="submit" value="Submit" />
+</form>

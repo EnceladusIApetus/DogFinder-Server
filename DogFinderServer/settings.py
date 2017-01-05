@@ -107,6 +107,11 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTH_USER_MODEL = 'server.User'
+
+AUTHENTICATION_BACKENDS = ['server.AuthenBackends.FBBackend']
+
+LOGIN_URL = '/server/login'
+
 # Internationalization
 # https://docs.djangoproject.com/en/1.10/topics/i18n/
 
