@@ -34,7 +34,7 @@ class UserCreationForm(forms.ModelForm):
 
 class UserChangeForm(forms.ModelForm):
     """A form for updating users. Includes all the fields on
-    the user, but replaces the password field with admin's
+    the views, but replaces the password field with admin's
     password hash display field.
     """
 
@@ -44,7 +44,7 @@ class UserChangeForm(forms.ModelForm):
 
 
 class UserAdmin(BaseUserAdmin):
-    # The forms to add and change user instances
+    # The forms to add and change views instances
     form = UserChangeForm
     add_form = UserCreationForm
 
@@ -59,7 +59,7 @@ class UserAdmin(BaseUserAdmin):
         ('Permissions', {'fields': ('role',)}),
     )
     # add_fieldsets is not a standard ModelAdmin attribute. UserAdmin
-    # overrides get_fieldsets to use this attribute when creating a user.
+    # overrides get_fieldsets to use this attribute when creating a views.
     add_fieldsets = (
         (None, {
             'classes': ('wide',),

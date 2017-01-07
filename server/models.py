@@ -54,6 +54,7 @@ class DogStatus(models.Model):
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, fb_id, fb_name, fb_token, fb_token_exp, email, telephone, birth_date, password=None):
+        # type: (object, object, object, object, object, object, object, object) -> object
         user = self.model(fb_id=fb_id, fb_name=fb_name, fb_token=fb_token, fb_token_exp=fb_token_exp, email=email, telephone=telephone, birth_date=birth_date)
         user.save(using=self._db)
         return user
