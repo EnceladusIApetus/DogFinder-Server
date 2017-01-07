@@ -22,15 +22,16 @@ class Dog(models.Model):
     name = models.CharField(max_length=30)
     bleed = models.CharField(max_length=30, null=True)
     age = models.IntegerField(null=True)
+    user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
     note = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    uodated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class Instance(models.Model):
     dog_id = models.ForeignKey(Dog, on_delete=models.CASCADE)
     image_id = models.ForeignKey(Image, on_delete=models.CASCADE)
-    original_features = models.TextField(null=True)
+    raw_features = models.TextField(null=True)
     reduced_features = models.TextField(null=True)
     label = models.IntegerField(null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -112,13 +113,13 @@ class LostAndFound(models.Model):
 
 class LocationImg(models.Model):
     image_id = models.ForeignKey(Image, on_delete=models.CASCADE)
-    lost_and_found = models.ForeignKey(LostAndFound, on_delete=models.CASCADE)
+    lost_and_found_id = models.ForeignKey(LostAndFound, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Chat(models.Model):
     lost_and_found_id = models.ForeignKey(LostAndFound, on_delete=models.CASCADE)
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE)
+    user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
