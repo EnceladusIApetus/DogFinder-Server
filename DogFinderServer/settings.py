@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -112,6 +111,15 @@ AUTH_USER_MODEL = 'server.User'
 AUTHENTICATION_BACKENDS = ['server.AuthenBackends.FBBackend']
 
 LOGIN_URL = '/server/login'
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'server_cache',
+    }
+}
+
+# SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.10/topics/i18n/

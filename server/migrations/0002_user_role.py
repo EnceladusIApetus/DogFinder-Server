@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.AddField(
-            model_name='user',
+            model_name='views',
             name='role',
             field=models.IntegerField(default=1),
         ),
