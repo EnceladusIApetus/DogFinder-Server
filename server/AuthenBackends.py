@@ -9,7 +9,7 @@ class FBBackend(object):
 
     def get_user(self, fb_id):
         try:
-            return User.objects.get(fb_id=fb_id)
+            return User.objects.get(pk=fb_id)
         except User.DoesNotExist:
             return None
 
