@@ -3,6 +3,14 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser
 from DogFinderServer import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from rest_framework.authtoken.models import Token
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)
 
 
 class Coordinate(models.Model):
@@ -22,15 +30,15 @@ class Dog(models.Model):
     name = models.CharField(max_length=30)
     bleed = models.CharField(max_length=30, null=True)
     age = models.IntegerField(null=True)
-    user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='dogs',on_delete=models.CASCADE, null=True, blank=True)
     note = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 
 class Instance(models.Model):
-    dog_id = models.ForeignKey(Dog, on_delete=models.CASCADE)
-    image_id = models.ForeignKey(Image, on_delete=models.CASCADE)
+    dog = models.ForeignKey(Dog, on_delete=models.CASCADE)
+    image = models.ForeignKey(Image, on_delete=models.CASCADE)
     raw_features = models.TextField(null=True)
     reduced_features = models.TextField(null=True)
     label = models.IntegerField(null=True)
@@ -39,14 +47,14 @@ class Instance(models.Model):
 
 
 class DogLocation(models.Model):
-    dog_id = models.ForeignKey(Dog, on_delete=models.CASCADE)
-    coordinate_id = models.ForeignKey(Coordinate, on_delete=models.CASCADE)
+    dog = models.ForeignKey(Dog, on_delete=models.CASCADE)
+    coordinate = models.ForeignKey(Coordinate, on_delete=models.CASCADE)
     name = models.CharField(max_length=30, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class DogStatus(models.Model):
-    dog_id = models.ForeignKey(Dog, on_delete=models.CASCADE)
+    dog = models.ForeignKey(Dog, on_delete=models.CASCADE)
     status = models.IntegerField()
     note = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -92,6 +100,14 @@ class User(AbstractBaseUser):
     def get_short_name(self):
         return self.fb_id
 
+    def set_active(self):
+        self.active = True
+        self.save()
+
+    def set_inactive(self):
+        self.active = False
+        self.save()
+
     @property
     def is_staff(self):
         return True if self.role == 0 else False
@@ -104,8 +120,8 @@ class User(AbstractBaseUser):
 
 
 class LostAndFound(models.Model):
-    user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,)
-    dog_id = models.ForeignKey(Dog, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,)
+    dog = models.ForeignKey(Dog, on_delete=models.CASCADE)
     type = models.IntegerField()
     note = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -113,14 +129,14 @@ class LostAndFound(models.Model):
 
 
 class LocationImg(models.Model):
-    image_id = models.ForeignKey(Image, on_delete=models.CASCADE)
-    lost_and_found_id = models.ForeignKey(LostAndFound, on_delete=models.CASCADE)
+    image = models.ForeignKey(Image, on_delete=models.CASCADE)
+    lost_and_found = models.ForeignKey(LostAndFound, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Chat(models.Model):
-    lost_and_found_id = models.ForeignKey(LostAndFound, on_delete=models.CASCADE)
-    user_id = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    lost_and_found = models.ForeignKey(LostAndFound, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     message = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
