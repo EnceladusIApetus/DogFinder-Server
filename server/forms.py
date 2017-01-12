@@ -1,4 +1,4 @@
-from .models import User
+from .models import User, Image, File
 from django import forms
 
 
@@ -19,3 +19,15 @@ class CustomUserCreationForm(forms.ModelForm):
             'birth_date': forms.DateInput(),
             'email': forms.EmailInput(),
         }
+
+
+class UploadFileForm(forms.ModelForm):
+    class Meta:
+        model = File
+        fields = {'name', 'path'}
+
+
+class UploadImageForm(forms.ModelForm):
+    class Meta:
+        model = Image
+        fields = {'name', 'path'}

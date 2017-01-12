@@ -147,3 +147,6 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     )
 }
+
+MEDIA_ROOT = 'media/'
+MEDIA_URL = '/media/'

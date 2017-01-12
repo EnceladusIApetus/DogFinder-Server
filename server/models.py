@@ -26,6 +26,12 @@ class Image(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class File(models.Model):
+    name = models.CharField(max_length=30, null=True)
+    path = models.FileField(upload_to='files/', null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class Dog(models.Model):
     name = models.CharField(max_length=30)
     bleed = models.CharField(max_length=30, null=True)
@@ -89,7 +95,7 @@ class User(AbstractBaseUser):
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'fb_id'
-    REQUIRED_FIELDS = ['email']
+    REQUIRED_FIELDS = ['fb_name', 'fb_token', 'fb_token_exp',]
 
     def is_active(self):
         return self.active
@@ -113,7 +119,10 @@ class User(AbstractBaseUser):
         return True if self.role == 0 else False
 
     def has_perm(self, perm, obj=None):
-        return self.is_staff()
+        if self.is_staff:
+            return True
+        elif perm == 'remove_own_dogs':
+            return True if obj.created_by == self else False
 
     def has_module_perms(self, app_label):
         return self.is_staff()

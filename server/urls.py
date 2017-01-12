@@ -1,7 +1,9 @@
+from django.conf import settings
 from django.conf.urls import url
+from django.conf.urls.static import static
 from rest_framework.urlpatterns import format_suffix_patterns
 
-from .views import user, test
+from .views import user, test, dogs
 
 app_name = 'server'
 
@@ -13,6 +15,8 @@ urlpatterns = [
     url(r'^user/get_user$', user.UserData.GetUser.as_view(), name='user_info'),
     url(r'^hello/$', test.hello.as_view()),
     url(r'^hello/(?P<pk>[0-9]+)/$', test.snippet_detail.as_view()),
-]
+    url(r'^upload/$', dogs.AddImage.as_view()),
+    url(r'^dog/$', dogs.IndividualDog.as_view()),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 urlpatterns = format_suffix_patterns(urlpatterns)

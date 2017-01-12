@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from server import ErrorCode
 from server.models import User
 from server.serializers import FullAccountSerializer, BasicAccountSerializer
 
@@ -25,7 +26,7 @@ class UserAuthentication():
                     else:
                         return Response({'success': False,
                                          'error': {
-                                             'code': 1001,
+                                             'code': ErrorCode.INPUT_DATA_INVALID,
                                              'message': 'Input data invalid.'
                                          }}, status=status.HTTP_406_NOT_ACCEPTABLE)
                 return Response({'success': True,
@@ -78,13 +79,13 @@ class UserData():
                     return Response({'success': True})
                 return Response({'success': False,
                                  'error': {
-                                     'code': 1001,
+                                     'code': ErrorCode.INPUT_DATA_INVALID,
                                      'message': 'Input data invalid.'
                                  }}, status=status.HTTP_406_NOT_ACCEPTABLE)
             except Exception as ex:
                 return Response({'success': False,
                                  'error': {
-                                     'code': 500,
+                                     'code': ErrorCode.INTERNAL_SERVER_ERROR,
                                      'message': 'Internal Server Error: ' + str(ex)
                                  }}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -105,6 +106,6 @@ class UserData():
                                  }})
             return Response({'success': False,
                              'error': {
-                                 'code': 404,
+                                 'code': ErrorCode.DATA_NOT_FOUND,
                                  'message': 'Data not found.'
                              }}, status=status.HTTP_404_NOT_FOUND)
