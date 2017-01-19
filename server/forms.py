@@ -22,12 +22,14 @@ class CustomUserCreationForm(forms.ModelForm):
 
 
 class UploadFileForm(forms.ModelForm):
+    name = forms.CharField(required=False)
     class Meta:
         model = File
-        fields = {'name', 'path'}
+        fields = {'name', "path"}
 
 
 class UploadImageForm(forms.ModelForm):
+    name = forms.CharField(required=False)
     class Meta:
         model = Image
-        fields = {'name', 'path'}
+        fields = {'name', "path"}

@@ -21,13 +21,13 @@ class Coordinate(models.Model):
 
 
 class Image(models.Model):
-    name = models.CharField(max_length=30, null=True)
+    name = models.CharField(max_length=30, null=True, blank=True)
     path = models.ImageField(upload_to='images/', null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class File(models.Model):
-    name = models.CharField(max_length=30, null=True)
+    name = models.CharField(max_length=30, null=True, blank=True)
     path = models.FileField(upload_to='files/', null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -121,7 +121,7 @@ class User(AbstractBaseUser):
     def has_perm(self, perm, obj=None):
         if self.is_staff:
             return True
-        elif perm == 'remove_own_dogs':
+        elif perm == 'manage_own_dog':
             return True if obj.created_by == self else False
 
     def has_module_perms(self, app_label):

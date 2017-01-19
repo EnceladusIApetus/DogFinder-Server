@@ -1,4 +1,6 @@
+from django.shortcuts import render
 from rest_framework import status
+from rest_framework.renderers import TemplateHTMLRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -6,7 +8,11 @@ from server import ErrorCode
 from server.forms import UploadImageForm, UploadFileForm
 
 
-class UploadPicture(APIView):
+class UploadImage(APIView):
+
+    @staticmethod
+    def get(request):
+        return render(request, 'server/upload_image.html')
 
     @staticmethod
     def post(request):
@@ -15,7 +21,8 @@ class UploadPicture(APIView):
             image = form.save()
             return Response({'success': True,
                          'payload': {
-                             'image_id': image.id
+                             'image_id': image.id,
+                             'url': image.path.url
                          }})
         return Response({'success': False,
                          'error': {
@@ -27,13 +34,18 @@ class UploadPicture(APIView):
 class UploadFile(APIView):
 
     @staticmethod
+    def get(request):
+        return render(request, 'server/upload_file.html', {'form': UploadFileForm()})
+
+    @staticmethod
     def post(request):
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
             file = form.save()
             return Response({'success': True,
                          'payload': {
-                             'image_id': file.id
+                             'file_id': file.id,
+                             'url': file.path.url
                          }})
         return Response({'success': False,
                          'error': {

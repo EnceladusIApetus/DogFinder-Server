@@ -12,14 +12,15 @@ class IndividualDog(APIView):
     @staticmethod
     def get(request):
         try:
-            dog = Dog.objects.get(pk=request.data.get("dog_id"))
+            dog = Dog.objects.get(pk=request.query_params.get('id', 0))
+            dog_instances = dog.instance_set.all()
             return Response(ResponseFormat.success({
                                  "dog_data": DogSerializer(dog).data
                              }))
         except Dog.DoesNotExist:
             return Response(
                 ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, "Data not found."),
-                status=status.HTTP_401_UNAUTHORIZED)
+                status=status.HTTP_404_NOT_FOUND)
 
     @staticmethod
     def post(request):
@@ -36,8 +37,24 @@ class IndividualDog(APIView):
         return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Input data invalid."),
                         status=status.HTTP_406_NOT_ACCEPTABLE)
 
+    @staticmethod
+    def put(request):
+        try:
+            dog = Dog.objects.get(pk=request.data.get('id', 0))
+            if request.user.has_perm('manage_own_dog', dog):
+                serializer = DogSerializer(dog, data=request.data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(ResponseFormat.success())
+                return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Input data invalid."), status=status.HTTP_406_NOT_ACCEPTABLE)
+        except Dog.DoesNotExist:
+            return Response(
+                ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, "Data not found."),
+                status=status.HTTP_404_NOT_FOUND)
 
-class AddImage(APIView):
+
+class Image(APIView):
+
     @staticmethod
     def post(request):
         dog = request.data.get('dog', None)

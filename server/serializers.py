@@ -11,6 +11,7 @@ class CoordinateSerializer(serializers.ModelSerializer):
 
 
 class ImageSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(required=False)
     created_at = serializers.DateTimeField(read_only=True, required=False)
 
     class Meta:
@@ -73,7 +74,7 @@ class FullAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.User
-        read_only_fields = ('id', 'fb_id',)
+        read_only_fields = ('id',)
         fields = ('id', 'fb_id', 'fb_name', 'fb_token', 'fb_token_exp', 'email', 'telephone', 'birth_date', 'dogs', 'created_at', 'updated_at',)
 
 
