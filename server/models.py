@@ -34,12 +34,19 @@ class File(models.Model):
 
 class Dog(models.Model):
     name = models.CharField(max_length=30)
-    bleed = models.CharField(max_length=30, null=True)
+    breed = models.CharField(max_length=30, null=True)
     age = models.IntegerField(null=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='dogs',on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE, null=True, blank=True)
     note = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def get_images(self):
+        images = []
+        for instance in self.instance_set.all():
+            images.append(instance.image.path.url)
+        return images
 
 
 class Instance(models.Model):
@@ -122,7 +129,7 @@ class User(AbstractBaseUser):
         if self.is_staff:
             return True
         elif perm == 'manage_own_dog':
-            return True if obj.created_by == self else False
+            return True if obj.user == self else False
 
     def has_module_perms(self, app_label):
         return self.is_staff()

@@ -2,11 +2,14 @@ from django.conf import settings
 from django.conf.urls import url
 from django.conf.urls.static import static
 from rest_framework.urlpatterns import format_suffix_patterns
+from rest_framework_swagger.views import get_swagger_view
 
 from server.views import general
 from .views import user, test, dogs
 
 app_name = 'server'
+
+schema_view = get_swagger_view(title='Pastebin API')
 
 urlpatterns = [
     url(r'^user/login$', user.UserAuthentication.UserLogin.as_view(), name='login'),
@@ -18,7 +21,10 @@ urlpatterns = [
     url(r'^hello/(?P<pk>[0-9]+)/$', test.snippet_detail.as_view()),
     url(r'^upload/file$', general.UploadFile.as_view(), name="upload_file"),
     url(r'^upload/image$', general.UploadImage.as_view(), name="upload_image"),
-    url(r'^dog$', dogs.IndividualDog.as_view()),
+    url(r'^dog/instance$', dogs.Instance.as_view()),
+    url(r'^dog/get_all_dogs', dogs.GetAllDog.as_view()),
+    url(r'^dog/$', dogs.Individual.as_view()),
+    url(r'^api$', schema_view),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # urlpatterns = format_suffix_patterns(urlpatterns)

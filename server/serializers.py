@@ -20,7 +20,7 @@ class ImageSerializer(serializers.ModelSerializer):
 
 
 class DogSerializer(serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField(source='owner.fb_id')
+    images = serializers.ListField(source='get_images', read_only=True)
     created_at = serializers.DateTimeField(read_only=True, required=False)
     updated_at = serializers.DateTimeField(read_only=True, required=False)
 
@@ -29,7 +29,7 @@ class DogSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Dog
-        fields = ('name', 'bleed', 'age', 'owner', 'note', 'created_at', 'updated_at')
+        fields = ('id', 'name', 'breed', 'age', 'note', 'images', 'created_at', 'updated_at')
 
 
 class InstanceSerializer(serializers.ModelSerializer):
