@@ -1,3 +1,4 @@
+from django.core.serializers import json
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
@@ -18,8 +19,8 @@ class Individual(APIView):
         try:
             dog = Dog.objects.get(pk=request.query_params.get('id', 0))
             return Response(ResponseFormat.success({
-                                 "dog": DogSerializer(dog).data
-                             }))
+                "dog": DogSerializer(dog).data
+            }))
         except Dog.DoesNotExist:
             return Response(
                 ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, "Data not found."),
@@ -49,7 +50,8 @@ class Individual(APIView):
                 if serializer.is_valid():
                     serializer.save()
                     return Response(ResponseFormat.success())
-                return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Input data invalid."), status=status.HTTP_406_NOT_ACCEPTABLE)
+                return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Input data invalid."),
+                                status=status.HTTP_406_NOT_ACCEPTABLE)
         except Dog.DoesNotExist:
             return Response(
                 ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, "Data not found."),
@@ -78,25 +80,21 @@ class GetAllDog(APIView):
 
 
 class Instance(APIView):
-    permission_classes = (IsAuthenticatedOrReadOnly, )
+    permission_classes = (IsAuthenticatedOrReadOnly,)
 
     @staticmethod
     def post(request):
-        dog = request.data.get('dog', None)
-        if dog:
-            try:
-                dog = Dog.objects.get(pk=dog.get('id', 0))
-                if request.user.has_perm('manage_own_dog', dog) is True:
-                    image = Image.objects.get(pk=request.data.get('image_id', 0))
-                    instance = dog.instance_set.create(image=image)
-                    instance.save()
-                    return Response(ResponseFormat.success())
-                return Response(ResponseFormat.error(403, "Wrong permission."), status=status.HTTP_403_FORBIDDEN)
-            except Dog.DoesNotExist | models.Instance.DoesNotExist:
-                return Response(ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, "Dog or image not found on server."),
-                                status=status.HTTP_404_NOT_FOUND)
-            except Exception as ex:
-                return Response(ResponseFormat.error(ErrorCode.INTERNAL_SERVER_ERROR, str(ex)),
-                                status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Dog data is required."),
-                        status=status.HTTP_406_NOT_ACCEPTABLE)
+        try:
+            dog = Dog.objects.get(pk=request.data.get("dog")['id'])
+            if request.user.has_perm('manage_own_dog', dog) is True:
+                image = Image.objects.get(pk=request.data.get('image_id', 0))
+                instance = dog.instance_set.create(image=image)
+                instance.save()
+                return Response(ResponseFormat.success())
+            return Response(ResponseFormat.error(403, "Wrong permission."), status=status.HTTP_403_FORBIDDEN)
+        except Dog.DoesNotExist | models.Instance.DoesNotExist:
+            return Response(ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, "Dog or image not found on server."),
+                            status=status.HTTP_404_NOT_FOUND)
+        except Exception as ex:
+            return Response(ResponseFormat.error(ErrorCode.INTERNAL_SERVER_ERROR, str(ex)),
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)

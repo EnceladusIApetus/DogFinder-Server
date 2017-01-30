@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from server import ErrorCode
+from server import ResponseFormat
 from server.forms import UploadImageForm, UploadFileForm
 
 
@@ -18,16 +19,11 @@ class UploadImage(APIView):
         form = UploadImageForm(request.POST, request.FILES)
         if form.is_valid():
             image = form.save()
-            return Response({'success': True,
-                         'payload': {
-                             'image_id': image.id,
-                             'url': image.path.url
-                         }})
-        return Response({'success': False,
-                         'error': {
-                             'code': ErrorCode.INPUT_DATA_INVALID,
-                             'message': 'Wrong format or invalid file.'
-                         }}, status=status.HTTP_406_NOT_ACCEPTABLE)
+            return Response(ResponseFormat.success({
+                'image_id': image.id,
+                'url': image.path.url
+            }))
+        return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, 'Wrong format or invalid file.'), status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
 class UploadFile(APIView):
@@ -41,13 +37,9 @@ class UploadFile(APIView):
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
             file = form.save()
-            return Response({'success': True,
-                         'payload': {
-                             'file_id': file.id,
-                             'url': file.path.url
-                         }})
-        return Response({'success': False,
-                         'error': {
-                             'code': ErrorCode.INPUT_DATA_INVALID,
-                             'message': 'Invalid file.'
-                         }}, status=status.HTTP_406_NOT_ACCEPTABLE)
+            return Response(ResponseFormat.success({
+                'file_id': file.id,
+                'url': file.path.url
+            }))
+        return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, 'Invalid file.'),
+                        status=status.HTTP_406_NOT_ACCEPTABLE)
