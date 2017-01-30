@@ -11,6 +11,7 @@ class CoordinateSerializer(serializers.ModelSerializer):
 
 
 class ImageSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(required=False)
     created_at = serializers.DateTimeField(read_only=True, required=False)
 
     class Meta:
@@ -19,13 +20,16 @@ class ImageSerializer(serializers.ModelSerializer):
 
 
 class DogSerializer(serializers.ModelSerializer):
-    owner = serializers.ReadOnlyField(source='owner.fb_id')
+    images = serializers.ListField(source='get_images', read_only=True)
     created_at = serializers.DateTimeField(read_only=True, required=False)
     updated_at = serializers.DateTimeField(read_only=True, required=False)
 
+    def create(self):
+        return models.Dog(**self.validated_data)
+
     class Meta:
         model = models.Dog
-        fields = ('name', 'bleed', 'age', 'owner', 'note', 'created_at', 'updated_at')
+        fields = ('id', 'name', 'breed', 'age', 'note', 'images', 'created_at', 'updated_at')
 
 
 class InstanceSerializer(serializers.ModelSerializer):
@@ -54,6 +58,7 @@ class DogStatusSerializer(serializers.ModelSerializer):
 
 
 class FullAccountSerializer(serializers.ModelSerializer):
+    dogs = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     created_at = serializers.DateTimeField(read_only=True, required=False)
     updated_at = serializers.DateTimeField(read_only=True, required=False)
 
@@ -69,8 +74,8 @@ class FullAccountSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.User
-        read_only_fields = ('id', 'fb_id',)
-        fields = ('id', 'fb_id', 'fb_name', 'fb_token', 'fb_token_exp', 'email', 'telephone', 'birth_date', 'created_at', 'updated_at',)
+        read_only_fields = ('id',)
+        fields = ('id', 'fb_id', 'fb_name', 'fb_token', 'fb_token_exp', 'email', 'telephone', 'birth_date', 'dogs', 'created_at', 'updated_at',)
 
 
 class BasicAccountSerializer(serializers.ModelSerializer):

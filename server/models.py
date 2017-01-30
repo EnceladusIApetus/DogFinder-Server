@@ -21,19 +21,32 @@ class Coordinate(models.Model):
 
 
 class Image(models.Model):
-    name = models.CharField(max_length=30, null=True)
+    name = models.CharField(max_length=30, null=True, blank=True)
     path = models.ImageField(upload_to='images/', null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class File(models.Model):
+    name = models.CharField(max_length=30, null=True, blank=True)
+    path = models.FileField(upload_to='files/', null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 
 class Dog(models.Model):
     name = models.CharField(max_length=30)
-    bleed = models.CharField(max_length=30, null=True)
+    breed = models.CharField(max_length=30, null=True)
     age = models.IntegerField(null=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='dogs',on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE, null=True, blank=True)
     note = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def get_images(self):
+        images = []
+        for instance in self.instance_set.all():
+            images.append(instance.image.path.url)
+        return images
 
 
 class Instance(models.Model):
@@ -89,7 +102,7 @@ class User(AbstractBaseUser):
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'fb_id'
-    REQUIRED_FIELDS = ['email']
+    REQUIRED_FIELDS = ['fb_name', 'fb_token', 'fb_token_exp',]
 
     def is_active(self):
         return self.active
@@ -113,7 +126,10 @@ class User(AbstractBaseUser):
         return True if self.role == 0 else False
 
     def has_perm(self, perm, obj=None):
-        return self.is_staff()
+        if self.is_staff:
+            return True
+        elif perm == 'manage_own_dog':
+            return True if obj.user == self else False
 
     def has_module_perms(self, app_label):
         return self.is_staff()

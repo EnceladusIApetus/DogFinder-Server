@@ -1,0 +1,5 @@
+<form method="post" action="{% url 'server:upload_image' %}" enctype="multipart/form-data">
+    <input type="text" name="name">
+    <input type="file" name="path" accept="image/*">
+    <input type="submit">
+</form>
