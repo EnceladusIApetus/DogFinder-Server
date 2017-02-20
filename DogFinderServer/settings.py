@@ -83,7 +83,7 @@ DATABASES = {
         'NAME': 'dogfinder',
         'USER': 'root',
         'PASSWORD': '7571179',
-        'HOST': '161.246.6.240',
+        'HOST': '0.0.0.0',
         'PORT': '10001'
     }
 }

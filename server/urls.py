@@ -23,6 +23,10 @@ urlpatterns = [
     url(r'^upload/image$', general.UploadImage.as_view(), name="upload_image"),
     url(r'^dog/instance$', dogs.Instance.as_view()),
     url(r'^dog/get_all_dogs', dogs.GetAllDog.as_view()),
+    url(r'^dog/add_dog_samples$', dogs.AddDogSamples.as_view()),
+    url(r'^dog/get_similar_faces', dogs.AlikeDogFace.as_view()),
+    url(r'^dog/lost_and_found', dogs.LostAndFoundAPI.as_view()),
+    url(r'^dog/get_lost_and_found', dogs.GenLostAndFound.as_view()),
     url(r'^dog/$', dogs.Individual.as_view()),
     url(r'^api$', schema_view),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

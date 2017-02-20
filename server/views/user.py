@@ -31,7 +31,8 @@ class UserAuthentication():
                                          }}, status=status.HTTP_406_NOT_ACCEPTABLE)
                 return Response({'success': True,
                                  'payload': {
-                                     'token': Token.objects.get(user=user).key
+                                     'token': Token.objects.get(user=user).key,
+                                     'user_data': FullAccountSerializer(user).data
                                  }}, status=status.HTTP_201_CREATED)
             except Exception as ex:
                 return Response({'success': False,

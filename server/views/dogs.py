@@ -1,14 +1,24 @@
-from django.core.serializers import json
+import random
+
+import numpy
+from django.conf import settings
+from django.core.files import File
+from django.shortcuts import render
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from modules import cluster
+from modules import feature_extractor, feature_selector, data_manager, nearest_neighbors
 from server import ErrorCode
 from server import ResponseFormat
 from server import models
-from server.models import Dog, Image, Instance, User
-from server.serializers import DogSerializer
+from server.forms import UploadImageForm
+from server.models import Dog, Image, User, LostAndFound
+from server.serializers import DogSerializer, LostAndFoundSerializer, BasicAccountSerializer
+
+import threading, names
 
 
 class Individual(APIView):
@@ -89,12 +99,166 @@ class Instance(APIView):
             if request.user.has_perm('manage_own_dog', dog) is True:
                 image = Image.objects.get(pk=request.data.get('image_id', 0))
                 instance = dog.instance_set.create(image=image)
-                instance.save()
+                ExtractFeature(instance, image.path.url).start()
                 return Response(ResponseFormat.success())
+        except Exception as ex:
+            return Response(ResponseFormat.error(ErrorCode.INTERNAL_SERVER_ERROR, str(ex)),
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return Response(ResponseFormat.error(403, "Wrong permission."), status=status.HTTP_403_FORBIDDEN)
         except Dog.DoesNotExist | models.Instance.DoesNotExist:
             return Response(ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, "Dog or image not found on server."),
                             status=status.HTTP_404_NOT_FOUND)
-        except Exception as ex:
-            return Response(ResponseFormat.error(ErrorCode.INTERNAL_SERVER_ERROR, str(ex)),
-                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+threadLimiter = threading.BoundedSemaphore(2)
+
+
+class ExtractFeature(threading.Thread):
+    def __init__(self, instance, path):
+        super(ExtractFeature, self).__init__()
+        self.instance = instance
+        self.path = path
+
+    def run(self):
+        threadLimiter.acquire()
+        try:
+            self.execute()
+        finally:
+            threadLimiter.release()
+
+    def execute(self):
+        self.instance.raw_features = feature_extractor.extract(settings.BASE_DIR + self.path)
+        feature_selector.load()
+        self.instance.reduced_features = feature_selector.reduce_features([self.instance.raw_features])[0]
+        self.instance.save()
+
+
+class AddDogSamples(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    @staticmethod
+    def get(request):
+        (instances, paths, file_names, original_labels) = data_manager.read_data(settings.BASE_DIR +
+                                                                                 '/data/samples/output/dogsColor')
+
+        rootDir = settings.BASE_DIR + '/data/samples/orderDogsIn/'
+
+        feature_selector.load()
+        reduced_features_instances = feature_selector.reduce_features(instances)
+        cluster.load()
+        labels = cluster.predict(reduced_features_instances)
+        for index in range(0, len(instances)):
+            dog = Dog(name=names.get_first_name(), breed='thousand way', age=random.randint(1, 20),
+                      user=User.objects.get(pk=8))
+            dog.save()
+            image = Image()
+            f = open(rootDir + str(original_labels[index]) + '/' + file_names[index], 'r')
+            image.path.save(file_names[index], File(f))
+            image.save()
+            instance = models.Instance(dog=dog, image=image, label=labels[index],
+                                       raw_features=", ".join(str(x) for x in instances[index]),
+                                       reduced_features=", ".join(
+                                           str(x) for x in reduced_features_instances[index]))
+            instance.save()
+
+        return Response(ResponseFormat.success())
+
+
+class AlikeDogFace(APIView):
+    @staticmethod
+    def get(request):
+        # return render(request, 'server/alike_faces.html')
+        try:
+            dog = Dog.objects.get(pk=request.query_params['dog_id'])
+            reduced_features = feature_extractor.convert_to_float(dog.instance_set.first().reduced_features)
+            lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(reduced_features))
+            lost_and_founds = LostAndFoundSerializer(lost_and_founds, many=True).data
+            return Response(ResponseFormat.success({
+                'lost_and_founds': lost_and_founds
+            }))
+        except Dog.DoesNotExist:
+            return Response(ResponseFormat.error(500, 'error'))
+
+    @staticmethod
+    def post(request):
+        form = UploadImageForm(request.POST, request.FILES)
+        if form.is_valid():
+            image = form.save()
+            raw_features = feature_extractor.extract(settings.BASE_DIR + image.path.url)
+            feature_selector.load()
+            reduced_features = feature_selector.reduce_features([raw_features])[0]
+            lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(reduced_features))
+            lost_and_founds = LostAndFoundSerializer(lost_and_founds, many=True).data
+            return Response(ResponseFormat.success({
+                'lost_and_founds': lost_and_founds
+            }))
+        return Response(ResponseFormat.error(500, 'error'))
+
+
+def find(reduced_features):
+    instances = models.Instance.objects.values_list('id', 'reduced_features', 'dog_id')
+    id_arr = []
+    reduced_features_arr = []
+    dog_id_arr = []
+    for tuple in instances:
+        id_arr.append(tuple[0])
+        reduced_features_arr.append(feature_extractor.convert_to_float(tuple[1]))
+        dog_id_arr.append(tuple[2])
+    nearest_neighbors.set(5, 100)
+    nearest_neighbors.fit(reduced_features_arr)
+    return nearest_neighbors.neighbors(reduced_features)
+
+
+class LostAndFoundAPI(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    @staticmethod
+    def get(requesr):
+        lostandfounds = LostAndFound.objects.all()
+        return Response(
+            ResponseFormat.success({'lost_and_founds': LostAndFoundSerializer(lostandfounds, many=True).data}))
+
+    @staticmethod
+    def post(request):
+        try:
+            dog = Dog.objects.get(pk=request.data.get('dog')['id'])
+            lostandfound = LostAndFound(user=request.user, dog=dog, note=request.data.get('note'),
+                                        type=request.data.get('type', 0))
+            lostandfound.save()
+        except Dog.DoesNotExist:
+            return Response(ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, 'Dog does not exist.'))
+        return Response(ResponseFormat.success())
+
+
+class Coordinate(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    @staticmethod
+    def post(request):
+        try:
+            dog = Dog.objects.get(pk=request.data.get('dog')['id'])
+            lostandfound = LostAndFound(user=request.user, dog=dog, note=request.data.get('note'),
+                                        type=request.data.get('type', 0))
+            lostandfound.save()
+        except Dog.DoesNotExist:
+            return Response(ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, 'Dog does not exist.'))
+        return Response(ResponseFormat.success())
+
+
+class GenLostAndFound(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    @staticmethod
+    def post(request):
+        users = User.objects.filter(id__gte=11).filter(id__lte=20)
+        size = len(users)
+        dogs = Dog.objects.all()
+        for index, dog in enumerate(dogs, 0):
+            user = users[index % size]
+            dog.user = user
+            dog.latitude = random.uniform(13.672826, 13.948263)
+            dog.longitude = random.uniform(100.338139, 100.894664)
+            dog.save()
+            lost_and_found = LostAndFound.objects.create(type=LostAndFound.LOST, user=user, dog=dog)
+            lost_and_found.save()
+        return Response(ResponseFormat.success())
