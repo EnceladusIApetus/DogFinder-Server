@@ -39,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework_swagger',
 ]
 
 MIDDLEWARE = [
@@ -83,7 +82,15 @@ DATABASES = {
         'NAME': 'dogfinder',
         'USER': 'root',
         'PASSWORD': '7571179',
-        'HOST': '161.246.6.240',
+        'HOST': '0.0.0.0',
+        'PORT': '10001'
+    },
+    'default1': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'dogfinder',
+        'USER': 'root',
+        'PASSWORD': '7571179',
+        'HOST': '52.187.62.107',
         'PORT': '10001'
     }
 }

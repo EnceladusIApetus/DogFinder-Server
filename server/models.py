@@ -36,8 +36,10 @@ class Dog(models.Model):
     name = models.CharField(max_length=30)
     breed = models.CharField(max_length=30, null=True)
     age = models.IntegerField(null=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name='dog_set')
     note = models.TextField(null=True, blank=True)
+    latitude = models.FloatField(null=True, default=0.0)
+    longitude = models.FloatField(null=True, default=0.0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -92,6 +94,7 @@ class User(AbstractBaseUser):
     fb_name = models.CharField(max_length=100)
     fb_token = models.TextField()
     fb_token_exp = models.DateTimeField(blank=True, null=True)
+    fb_profile_image = models.TextField(default=None)
     role = models.IntegerField(default=1)
     email = models.CharField(max_length=50, null=True)
     telephone = models.CharField(max_length=20, null=True)
@@ -102,7 +105,7 @@ class User(AbstractBaseUser):
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'fb_id'
-    REQUIRED_FIELDS = ['fb_name', 'fb_token', 'fb_token_exp',]
+    REQUIRED_FIELDS = ['fb_name', 'fb_token', 'fb_token_exp', 'fb_profile_image']
 
     def is_active(self):
         return self.active
@@ -136,12 +139,15 @@ class User(AbstractBaseUser):
 
 
 class LostAndFound(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,)
-    dog = models.ForeignKey(Dog, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    dog = models.ForeignKey(Dog, on_delete=models.CASCADE, related_name='dogs')
     type = models.IntegerField()
     note = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    LOST = 0
+    FOUND = 1
 
 
 class LocationImg(models.Model):
