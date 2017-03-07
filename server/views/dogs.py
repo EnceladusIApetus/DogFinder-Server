@@ -11,12 +11,13 @@ from rest_framework.views import APIView
 
 from modules import cluster
 from modules import feature_extractor, feature_selector, data_manager, nearest_neighbors
+from modules import sentence_generator
 from server import ErrorCode
 from server import ResponseFormat
 from server import models
 from server.forms import UploadImageForm
 from server.models import Dog, Image, User, LostAndFound
-from server.serializers import DogSerializer, LostAndFoundSerializer, BasicAccountSerializer
+from server.serializers import DogSerializer, LostAndFoundSerializer, BasicAccountSerializer, ImageSerializer
 
 import threading, names
 
@@ -85,8 +86,14 @@ class GetAllDog(APIView):
 
     @staticmethod
     def get(request):
-        serializer = DogSerializer(request.user.dog_set.all(), many=True)
-        return Response(ResponseFormat.success({'dogs': serializer.data}))
+        try:
+            limit = int(request.query_params['limit'])
+            end = limit * int(request.query_params['page'])
+            dogs = request.user.dog_set.all()[end - limit: end]
+            serializer = DogSerializer(dogs, many=True)
+            return Response(ResponseFormat.success({'dogs': serializer.data}))
+        except:
+            return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID), status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
 class Instance(APIView):
@@ -164,10 +171,14 @@ class AddDogSamples(APIView):
         return Response(ResponseFormat.success())
 
 
-class AlikeDogFace(APIView):
+class FindSimilarDogs(APIView):
+
+    # @staticmethod
+    # def get(request):
+    #     return render(request, 'server/alike_faces.html')
+
     @staticmethod
     def get(request):
-        # return render(request, 'server/alike_faces.html')
         try:
             dog = Dog.objects.get(pk=request.query_params['dog_id'])
             reduced_features = feature_extractor.convert_to_float(dog.instance_set.first().reduced_features)
@@ -181,9 +192,9 @@ class AlikeDogFace(APIView):
 
     @staticmethod
     def post(request):
-        form = UploadImageForm(request.POST, request.FILES)
-        if form.is_valid():
-            image = form.save()
+        serializer = ImageSerializer(data=request.data)
+        if serializer.is_valid():
+            image = serializer.save()
             raw_features = feature_extractor.extract(settings.BASE_DIR + image.path.url)
             feature_selector.load()
             reduced_features = feature_selector.reduce_features([raw_features])[0]
@@ -204,7 +215,7 @@ def find(reduced_features):
         id_arr.append(tuple[0])
         reduced_features_arr.append(feature_extractor.convert_to_float(tuple[1]))
         dog_id_arr.append(tuple[2])
-    nearest_neighbors.set(5, 100)
+    nearest_neighbors.set(10, 100)
     nearest_neighbors.fit(reduced_features_arr)
     return nearest_neighbors.neighbors(reduced_features)
 
@@ -214,7 +225,7 @@ class LostAndFoundAPI(APIView):
 
     @staticmethod
     def get(requesr):
-        lostandfounds = LostAndFound.objects.all()
+        lostandfounds = LostAndFound.objects.filter(id__lte=50)
         return Response(
             ResponseFormat.success({'lost_and_founds': LostAndFoundSerializer(lostandfounds, many=True).data}))
 
@@ -261,4 +272,14 @@ class GenLostAndFound(APIView):
             dog.save()
             lost_and_found = LostAndFound.objects.create(type=LostAndFound.LOST, user=user, dog=dog)
             lost_and_found.save()
+        return Response(ResponseFormat.success())
+
+
+class LoopThroughAll(APIView):
+
+    @staticmethod
+    def get(request):
+        for item in LostAndFound.objects.all():
+            item.note = sentence_generator.sing_sen_maker()
+            item.save()
         return Response(ResponseFormat.success())
