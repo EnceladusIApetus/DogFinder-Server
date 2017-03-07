@@ -89,11 +89,11 @@ class GetAllDog(APIView):
         try:
             limit = int(request.query_params['limit'])
             end = limit * int(request.query_params['page'])
-            dogs = request.user.dog_set.all()[end - limit: end]
+            dogs = request.user.dog_set.all()[end - limit:end]
             serializer = DogSerializer(dogs, many=True)
             return Response(ResponseFormat.success({'dogs': serializer.data}))
         except:
-            return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID), status=status.HTTP_406_NOT_ACCEPTABLE)
+            return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Required parameters are not fulfilled."), status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
 class Instance(APIView):
