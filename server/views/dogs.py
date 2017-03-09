@@ -18,6 +18,7 @@ from server import models
 from server.forms import UploadImageForm
 from server.models import Dog, Image, User, LostAndFound
 from server.serializers import DogSerializer, LostAndFoundSerializer, BasicAccountSerializer, ImageSerializer
+from django.core.cache import caches
 
 import threading, names
 
@@ -180,12 +181,15 @@ class FindSimilarDogs(APIView):
     @staticmethod
     def get(request):
         try:
+            cache = caches['default']
             dog = Dog.objects.get(pk=request.query_params['dog_id'])
-            reduced_features = feature_extractor.convert_to_float(dog.instance_set.first().reduced_features)
-            lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(reduced_features))
-            lost_and_founds = LostAndFoundSerializer(lost_and_founds, many=True).data
+            lost_and_founds = cache.get('lost_and_found_dog_id_' + str(dog.id))
+            if lost_and_founds is None:
+                reduced_features = feature_extractor.convert_to_float(dog.instance_set.first().reduced_features)
+                lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(reduced_features))
+                cache.set('lost_and_found_dog_id_' + str(dog.id), lost_and_founds, 240)
             return Response(ResponseFormat.success({
-                'lost_and_founds': lost_and_founds
+                'lost_and_founds': LostAndFoundSerializer(lost_and_founds, many=True).data
             }))
         except Dog.DoesNotExist:
             return Response(ResponseFormat.error(500, 'error'))
