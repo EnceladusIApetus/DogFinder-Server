@@ -3,6 +3,7 @@ from django.conf.urls import url
 from django.conf.urls.static import static
 from rest_framework.urlpatterns import format_suffix_patterns
 
+from server.views import device
 from server.views import general
 from .views import user, test, dogs
 
@@ -25,6 +26,8 @@ urlpatterns = [
     url(r'^dog/get_lost_and_found', dogs.GenLostAndFound.as_view()),
     url(r'^dog/$', dogs.Individual.as_view()),
     url(r'^other/$', dogs.LoopThroughAll.as_view()),
+    url(r'^device/fcm_token', device.UpdateFCMToken.as_view()),
+    url(r'^noti', dogs.TestNoti.as_view()),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # urlpatterns = format_suffix_patterns(urlpatterns)

@@ -4,6 +4,7 @@ import numpy
 from django.conf import settings
 from django.core.files import File
 from django.shortcuts import render
+from fcm_django.models import FCMDevice
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
@@ -12,6 +13,7 @@ from rest_framework.views import APIView
 from modules import cluster
 from modules import feature_extractor, feature_selector, data_manager, nearest_neighbors
 from modules import sentence_generator
+from server import CloudMessenger
 from server import ErrorCode
 from server import ResponseFormat
 from server import models
@@ -20,7 +22,7 @@ from server.models import Dog, Image, User, LostAndFound
 from server.serializers import DogSerializer, LostAndFoundSerializer, BasicAccountSerializer, ImageSerializer
 from django.core.cache import caches
 
-import threading, names
+import threading, names, requests
 
 
 class Individual(APIView):
@@ -94,7 +96,9 @@ class GetAllDog(APIView):
             serializer = DogSerializer(dogs, many=True)
             return Response(ResponseFormat.success({'dogs': serializer.data}))
         except:
-            return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Required parameters are not fulfilled."), status=status.HTTP_406_NOT_ACCEPTABLE)
+            return Response(
+                ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Required parameters are not fulfilled."),
+                status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
 class Instance(APIView):
@@ -173,7 +177,6 @@ class AddDogSamples(APIView):
 
 
 class FindSimilarDogs(APIView):
-
     # @staticmethod
     # def get(request):
     #     return render(request, 'server/alike_faces.html')
@@ -280,10 +283,17 @@ class GenLostAndFound(APIView):
 
 
 class LoopThroughAll(APIView):
-
     @staticmethod
     def get(request):
         for item in LostAndFound.objects.all():
             item.note = sentence_generator.sing_sen_maker()
             item.save()
+        return Response(ResponseFormat.success())
+
+
+class TestNoti(APIView):
+    @staticmethod
+    def get(request):
+        CloudMessenger.send_notification(None, 'hiiiii', 'helloooo')
+        CloudMessenger.send_data(None, {'hello': 'hiiii'})
         return Response(ResponseFormat.success())

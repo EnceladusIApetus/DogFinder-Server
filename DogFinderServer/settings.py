@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'fcm_django',
 ]
 
 MIDDLEWARE = [
@@ -52,6 +53,10 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'DogFinderServer.urls'
+
+FCM_DJANGO_SETTINGS = {
+        "FCM_SERVER_KEY": "AAAATw4SJUs:APA91bGv1EZwKJPhdhvgQvA-mOZLnezRGbTdL3TN9l8cFpXMUofPiNgChsq-Fb-NYC2Y8gvPOJvJSOT_iZAE9q0yMUUXNMvjHLHi3WRQYttcSqO89kTnNdZAe8dnWhDRc7dSy0PeSN68"
+}
 
 TEMPLATES = [
     {
@@ -85,14 +90,14 @@ DATABASES = {
         'HOST': '0.0.0.0',
         'PORT': '10001'
     },
-    'default1': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'dogfinder',
-        'USER': 'root',
-        'PASSWORD': '7571179',
-        'HOST': '52.187.62.107',
-        'PORT': '10001'
-    }
+    # 'default1': {
+    #     'ENGINE': 'django.db.backends.mysql',
+    #     'NAME': 'dogfinder',
+    #     'USER': 'root',
+    #     'PASSWORD': '7571179',
+    #     'HOST': '52.187.62.107',
+    #     'PORT': '10001'
+    # }
 }
 
 
