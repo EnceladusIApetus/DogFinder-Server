@@ -4,6 +4,7 @@ import numpy
 from django.conf import settings
 from django.core.files import File
 from django.shortcuts import render
+from fcm_django.models import FCMDevice
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 from rest_framework.response import Response
@@ -12,14 +13,16 @@ from rest_framework.views import APIView
 from modules import cluster
 from modules import feature_extractor, feature_selector, data_manager, nearest_neighbors
 from modules import sentence_generator
+from server import CloudMessenger
 from server import ErrorCode
 from server import ResponseFormat
 from server import models
 from server.forms import UploadImageForm
 from server.models import Dog, Image, User, LostAndFound
 from server.serializers import DogSerializer, LostAndFoundSerializer, BasicAccountSerializer, ImageSerializer
+from django.core.cache import caches
 
-import threading, names
+import threading, names, requests
 
 
 class Individual(APIView):
@@ -93,7 +96,9 @@ class GetAllDog(APIView):
             serializer = DogSerializer(dogs, many=True)
             return Response(ResponseFormat.success({'dogs': serializer.data}))
         except:
-            return Response(ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Required parameters are not fulfilled."), status=status.HTTP_406_NOT_ACCEPTABLE)
+            return Response(
+                ResponseFormat.error(ErrorCode.INPUT_DATA_INVALID, "Required parameters are not fulfilled."),
+                status=status.HTTP_406_NOT_ACCEPTABLE)
 
 
 class Instance(APIView):
@@ -172,7 +177,6 @@ class AddDogSamples(APIView):
 
 
 class FindSimilarDogs(APIView):
-
     # @staticmethod
     # def get(request):
     #     return render(request, 'server/alike_faces.html')
@@ -180,12 +184,15 @@ class FindSimilarDogs(APIView):
     @staticmethod
     def get(request):
         try:
+            cache = caches['default']
             dog = Dog.objects.get(pk=request.query_params['dog_id'])
-            reduced_features = feature_extractor.convert_to_float(dog.instance_set.first().reduced_features)
-            lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(reduced_features))
-            lost_and_founds = LostAndFoundSerializer(lost_and_founds, many=True).data
+            lost_and_founds = cache.get('lost_and_found_dog_id_' + str(dog.id))
+            if lost_and_founds is None:
+                reduced_features = feature_extractor.convert_to_float(dog.instance_set.first().reduced_features)
+                lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(reduced_features))
+                cache.set('lost_and_found_dog_id_' + str(dog.id), lost_and_founds, 240)
             return Response(ResponseFormat.success({
-                'lost_and_founds': lost_and_founds
+                'lost_and_founds': LostAndFoundSerializer(lost_and_founds, many=True).data
             }))
         except Dog.DoesNotExist:
             return Response(ResponseFormat.error(500, 'error'))
@@ -198,8 +205,11 @@ class FindSimilarDogs(APIView):
             raw_features = feature_extractor.extract(settings.BASE_DIR + image.path.url)
             feature_selector.load()
             reduced_features = feature_selector.reduce_features([raw_features])[0]
-            lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(reduced_features))
-            lost_and_founds = LostAndFoundSerializer(lost_and_founds, many=True).data
+            dog_id_list = find(reduced_features)
+            lost_and_founds = LostAndFound.objects.filter(dog_id__in=dog_id_list)
+            objects = dict([(obj.dog.id, obj) for obj in lost_and_founds])
+            sorted_objects = [objects[id] for id in dog_id_list]
+            lost_and_founds = LostAndFoundSerializer(sorted_objects, many=True).data
             return Response(ResponseFormat.success({
                 'lost_and_founds': lost_and_founds
             }))
@@ -217,7 +227,7 @@ def find(reduced_features):
         dog_id_arr.append(tuple[2])
     nearest_neighbors.set(10, 100)
     nearest_neighbors.fit(reduced_features_arr)
-    return nearest_neighbors.neighbors(reduced_features)
+    return [dog_id_arr[i] for i in nearest_neighbors.neighbors(reduced_features)]
 
 
 class LostAndFoundAPI(APIView):
@@ -276,10 +286,17 @@ class GenLostAndFound(APIView):
 
 
 class LoopThroughAll(APIView):
-
     @staticmethod
     def get(request):
         for item in LostAndFound.objects.all():
             item.note = sentence_generator.sing_sen_maker()
             item.save()
+        return Response(ResponseFormat.success())
+
+
+class TestNoti(APIView):
+    @staticmethod
+    def get(request):
+        CloudMessenger.send_notification(None, 'hiiiii', 'helloooo')
+        CloudMessenger.send_data(None, {'hello': 'hiiii'})
         return Response(ResponseFormat.success())
