@@ -205,8 +205,11 @@ class FindSimilarDogs(APIView):
             raw_features = feature_extractor.extract(settings.BASE_DIR + image.path.url)
             feature_selector.load()
             reduced_features = feature_selector.reduce_features([raw_features])[0]
-            lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(reduced_features))
-            lost_and_founds = LostAndFoundSerializer(lost_and_founds, many=True).data
+            dog_id_list = find(reduced_features)
+            lost_and_founds = LostAndFound.objects.filter(dog_id__in=dog_id_list)
+            objects = dict([(obj.dog.id, obj) for obj in lost_and_founds])
+            sorted_objects = [objects[id] for id in dog_id_list]
+            lost_and_founds = LostAndFoundSerializer(sorted_objects, many=True).data
             return Response(ResponseFormat.success({
                 'lost_and_founds': lost_and_founds
             }))
@@ -224,7 +227,7 @@ def find(reduced_features):
         dog_id_arr.append(tuple[2])
     nearest_neighbors.set(10, 100)
     nearest_neighbors.fit(reduced_features_arr)
-    return nearest_neighbors.neighbors(reduced_features)
+    return [dog_id_arr[i] for i in nearest_neighbors.neighbors(reduced_features)]
 
 
 class LostAndFoundAPI(APIView):
