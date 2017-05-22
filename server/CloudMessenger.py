@@ -1,14 +1,16 @@
 from fcm_django.models import FCMDevice
 
 
-def send_notification(user=None, title=None, body=None, icon=None):
+def send_notification(user=None, title=None, body=None, icon=None, click_action=None):
     try:
         if user is None:
-            device = FCMDevice.objects.all()
+            devices = FCMDevice.objects.all()
+            for device in devices:
+                hello = device.send_message(title=title, body=body, click_action=click_action)
         else:
             device = FCMDevice.objects.get(user_id=user.id)
-        device.send_message(title=title, body=body, icon=icon)
-        return True
+            hello = device.send_message(title=title, body=body, click_action=click_action)
+        return hello
     except:
         return False
 
