@@ -116,3 +116,10 @@ class ChatSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.LocationImg
         fields = ('user_id', 'lost_and_found_id', 'message', 'created_at')
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.Notification
+        fields = ('user_id', 'lost_and_found_id', 'created_at')

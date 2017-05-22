@@ -1,4 +1,5 @@
 import random
+from math import asin, cos, sin, radians
 
 import numpy
 from django.conf import settings
@@ -19,7 +20,7 @@ from server import ResponseFormat
 from server import models
 from server.forms import UploadImageForm
 from server.models import Dog, Image, User, LostAndFound
-from server.serializers import DogSerializer, LostAndFoundSerializer, BasicAccountSerializer, ImageSerializer
+from server.serializers import DogSerializer, LostAndFoundSerializer, BasicAccountSerializer, ImageSerializer, NotificationSerializer
 from django.core.cache import caches
 
 import threading, names, requests
@@ -139,10 +140,20 @@ class ExtractFeature(threading.Thread):
             threadLimiter.release()
 
     def execute(self):
-        self.instance.raw_features = feature_extractor.extract(settings.BASE_DIR + self.path)
+        raw_features = feature_extractor.extract(settings.BASE_DIR + self.path)
+        self.instance.raw_features = feature_extractor.convert_to_str(raw_features)
         feature_selector.load()
-        self.instance.reduced_features = feature_selector.reduce_features([self.instance.raw_features])[0]
+        self.instance.reduced_features = feature_extractor.convert_to_str(feature_selector.reduce_features([raw_features])[0])
         self.instance.save()
+
+        dog = self.instance.dog
+        found_post = dog.lostandfound_set.filter(type=LostAndFound.FOUND).first()
+        if found_post is not None:
+            dog_id_set = find(query_dog=dog, neighbor_num=15, distance=600)
+            lost_posts = LostAndFound.objects.filter(type=LostAndFound.LOST).filter(dog_id__in=dog_id_set)
+            for post in lost_posts:
+                models.Notification.objects.create(user=post.dog.user, lost_and_found=found_post)
+                CloudMessenger.send_notification(post.dog.user, "Should you look here?", "We've found similar dogs like your" + post.dog.name + "!!", icon=None, click_action='FoundPostDetail')
 
 
 class AddDogSamples(APIView):
@@ -159,9 +170,12 @@ class AddDogSamples(APIView):
         reduced_features_instances = feature_selector.reduce_features(instances)
         cluster.load()
         labels = cluster.predict(reduced_features_instances)
+        available_user_id = [11, 15, 16, 17, 18, 19, 20, 21]
         for index in range(0, len(instances)):
             dog = Dog(name=names.get_first_name(), breed='thousand way', age=random.randint(1, 20),
-                      user=User.objects.get(pk=8))
+                      user=User.objects.get(pk=available_user_id[random.randint(0, 7)]))
+            dog.latitude = random.uniform(13.672826, 13.948263)
+            dog.longitude = random.uniform(100.338139, 100.894664)
             dog.save()
             image = Image()
             f = open(rootDir + str(original_labels[index]) + '/' + file_names[index], 'r')
@@ -186,16 +200,17 @@ class FindSimilarDogs(APIView):
         try:
             cache = caches['default']
             dog = Dog.objects.get(pk=request.query_params['dog_id'])
-            lost_and_founds = cache.get('lost_and_found_dog_id_' + str(dog.id))
+            radius = int(request.query_params.get("radius", 0))
+            # lost_and_founds = cache.get('lost_and_found_dog_id_' + str(dog.id))
+            lost_and_founds = None
             if lost_and_founds is None:
-                reduced_features = feature_extractor.convert_to_float(dog.instance_set.first().reduced_features)
-                lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(reduced_features))
+                lost_and_founds = LostAndFound.objects.filter(dog_id__in=find(query_dog=dog, radius=radius, neighbor_num=15, distance=250, status=LostAndFound.FOUND))
                 cache.set('lost_and_found_dog_id_' + str(dog.id), lost_and_founds, 240)
             return Response(ResponseFormat.success({
                 'lost_and_founds': LostAndFoundSerializer(lost_and_founds, many=True).data
             }))
-        except Dog.DoesNotExist:
-            return Response(ResponseFormat.error(500, 'error'))
+        except Exception as ex:
+            return Response(ResponseFormat.error(500, str(ex)))
 
     @staticmethod
     def post(request):
@@ -205,8 +220,8 @@ class FindSimilarDogs(APIView):
             raw_features = feature_extractor.extract(settings.BASE_DIR + image.path.url)
             feature_selector.load()
             reduced_features = feature_selector.reduce_features([raw_features])[0]
-            dog_id_list = find(reduced_features)
-            lost_and_founds = LostAndFound.objects.filter(dog_id__in=dog_id_list)
+            dog_id_list = find(reduced_features=reduced_features, neighbor_num=15, distance=250, status=LostAndFound.FOUND)
+            lost_and_founds = [dog for dog in LostAndFound.objects.filter(dog_id__in=dog_id_list)]
             objects = dict([(obj.dog.id, obj) for obj in lost_and_founds])
             sorted_objects = [objects[id] for id in dog_id_list]
             lost_and_founds = LostAndFoundSerializer(sorted_objects, many=True).data
@@ -216,16 +231,28 @@ class FindSimilarDogs(APIView):
         return Response(ResponseFormat.error(500, 'error'))
 
 
-def find(reduced_features):
-    instances = models.Instance.objects.values_list('id', 'reduced_features', 'dog_id')
+def find(query_dog=None, reduced_features=None, radius=None, neighbor_num=10, distance=100, status=None):
+    reduced_features = feature_extractor.convert_to_float(query_dog.instance_set.first().reduced_features) if reduced_features is None else reduced_features
+    if radius == None or radius == 0:
+        dogs = Dog.objects.all() if status is None else Dog.objects.filter(lostandfound__isnull=False).filter(lostandfound__type=status)
+    else:
+        dogs = []
+        for dog in Dog.objects.all() if status is None else Dog.objects.filter(lostandfound__isnull=False).filter(lostandfound__type=status):
+            distance = get_distance(query_dog.longitude, query_dog.latitude, dog.longitude, dog.latitude)
+            if distance <= radius:
+                dogs.append(dog)
+
+    instances = [dog.instance_set.first() for dog in dogs]
     id_arr = []
     reduced_features_arr = []
     dog_id_arr = []
-    for tuple in instances:
-        id_arr.append(tuple[0])
-        reduced_features_arr.append(feature_extractor.convert_to_float(tuple[1]))
-        dog_id_arr.append(tuple[2])
-    nearest_neighbors.set(10, 100)
+    for instance in instances:
+        if instance is None or instance.raw_features is None:
+            continue
+        id_arr.append(instance.id)
+        reduced_features_arr.append(feature_extractor.convert_to_float(instance.reduced_features))
+        dog_id_arr.append(instance.dog_id)
+    nearest_neighbors.set(neighbor_num, distance)
     nearest_neighbors.fit(reduced_features_arr)
     return [dog_id_arr[i] for i in nearest_neighbors.neighbors(reduced_features)]
 
@@ -234,10 +261,13 @@ class LostAndFoundAPI(APIView):
     permission_classes = (IsAuthenticated,)
 
     @staticmethod
-    def get(requesr):
-        lostandfounds = LostAndFound.objects.filter(id__lte=50)
+    def get(request):
+        type = int(request.query_params.get("type"))
+        max = int(request.query_params.get("max"))
+        lost_and_founds = LostAndFound.objects.filter(type=type).order_by("-id")[:10]
+        # lost_and_founds = LostAndFound.objects.all()
         return Response(
-            ResponseFormat.success({'lost_and_founds': LostAndFoundSerializer(lostandfounds, many=True).data}))
+            ResponseFormat.success({'lost_and_founds': LostAndFoundSerializer(lost_and_founds, many=True).data}))
 
     @staticmethod
     def post(request):
@@ -246,6 +276,12 @@ class LostAndFoundAPI(APIView):
             lostandfound = LostAndFound(user=request.user, dog=dog, note=request.data.get('note'),
                                         type=request.data.get('type', 0))
             lostandfound.save()
+
+            # if request.data.get('type', 0) == 1:
+                # lost_and_founds = find(feature_extractor.convert_to_float(dog.reduced_features))
+                # for item in lost_and_founds:
+                #     models.Notification.objects.create(user=item.dog.user, dog=item.dog)
+                #     CloudMessenger.send_notification(item.dog.user, "Similar Face", "We've found similar dog", "FoundPostDetail")
         except Dog.DoesNotExist:
             return Response(ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, 'Dog does not exist.'))
         return Response(ResponseFormat.success())
@@ -271,16 +307,13 @@ class GenLostAndFound(APIView):
 
     @staticmethod
     def post(request):
-        users = User.objects.filter(id__gte=11).filter(id__lte=20)
-        size = len(users)
+        # users = User.objects.filter(id__gte=11).filter(id__lte=20)
+        # size = len(users)
         dogs = Dog.objects.all()
         for index, dog in enumerate(dogs, 0):
-            user = users[index % size]
-            dog.user = user
-            dog.latitude = random.uniform(13.672826, 13.948263)
-            dog.longitude = random.uniform(100.338139, 100.894664)
-            dog.save()
-            lost_and_found = LostAndFound.objects.create(type=LostAndFound.LOST, user=user, dog=dog)
+            # user = users[index % size]
+            # dog.user = user
+            lost_and_found = LostAndFound.objects.create(type=LostAndFound.FOUND, user=dog.user, dog=dog)
             lost_and_found.save()
         return Response(ResponseFormat.success())
 
@@ -297,6 +330,41 @@ class LoopThroughAll(APIView):
 class TestNoti(APIView):
     @staticmethod
     def get(request):
-        CloudMessenger.send_notification(None, 'hiiiii', 'helloooo')
-        CloudMessenger.send_data(None, {'hello': 'hiiii'})
+        CloudMessenger.send_notification(None, 'hiiiii', 'helloooo', click_action='FoundPostDetail')
+        dog = Dog.objects.all()[0]
+        lostfound = dog.lostandfound_set.all().filter(type=LostAndFound.FOUND).first();
+        return Response(ResponseFormat.success({'lost_and_founds': LostAndFoundSerializer(lostfound).data}))
+
+
+class ReduceFeature(APIView):
+    @staticmethod
+    def get(request):
+        feature_selector.load()
+        instances = models.Instance.objects.all()
+        int = []
+        for instance in instances:
+            reduced_features = feature_selector.reduce_features([feature_extractor.convert_to_float(instance.raw_features)])[0]
+            instance.reduced_features = feature_extractor.convert_to_str(reduced_features)
+            instance.save()
+            # int.append(feature_extractor.convert_to_float(instance.raw_features))
+        # feature_selector.fit(int)
+        # test = feature_selector.reduce_features(int[0])
         return Response(ResponseFormat.success())
+
+
+class LastNotification(APIView):
+    @staticmethod
+    def get(request):
+        lost_and_found = request.user.notification_set.all().last().lost_and_found
+        return Response(ResponseFormat.success({'notification': LostAndFoundSerializer(lost_and_found).data}))
+
+
+def get_distance(lon1, lat1, lon2, lat2):
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    c = 2 * asin(numpy.sqrt(a))
+    km = 6367 * c
+    return km
