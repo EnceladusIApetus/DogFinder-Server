@@ -2,7 +2,7 @@ import os
 
 
 def extract(path):
-    raw = os.popen('~/Ice/DogFinder/overfeat/bin/linux_64/overfeat -f ' + path).read()[9:-2].split(' ')
+    raw = os.popen('~/OverFeat/bin/linux_64/overfeat -f ' + path).read()[9:-2].split(' ')
     features = [float(feature) for feature in raw][0:4096]
     return features
 
