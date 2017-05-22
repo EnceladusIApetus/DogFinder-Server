@@ -1,0 +1,18 @@
+version: "2"
+services:
+
+  db:
+    image: mysql:8.0.1
+    volumes:
+      - /home/ubuntu/Ice/db_backups/DogFinder/:/var/lib/mysql/
+    environment:
+      - MYSQL_ROOT_PASSWORD=7571179
+    ports:
+      - 10001:3306
+
+  db-client:
+    image: phpmyadmin/phpmyadmin:edge
+    links:
+      - db:mysql
+    ports:
+      - 10000:80
