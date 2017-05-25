@@ -191,9 +191,6 @@ class AddDogSamples(APIView):
 
 
 class FindSimilarDogs(APIView):
-    # @staticmethod
-    # def get(request):
-    #     return render(request, 'server/alike_faces.html')
 
     @staticmethod
     def get(request):
@@ -287,21 +284,6 @@ class LostAndFoundAPI(APIView):
         return Response(ResponseFormat.success())
 
 
-class Coordinate(APIView):
-    permission_classes = (IsAuthenticated,)
-
-    @staticmethod
-    def post(request):
-        try:
-            dog = Dog.objects.get(pk=request.data.get('dog')['id'])
-            lostandfound = LostAndFound(user=request.user, dog=dog, note=request.data.get('note'),
-                                        type=request.data.get('type', 0))
-            lostandfound.save()
-        except Dog.DoesNotExist:
-            return Response(ResponseFormat.error(ErrorCode.DATA_NOT_FOUND, 'Dog does not exist.'))
-        return Response(ResponseFormat.success())
-
-
 class GenLostAndFound(APIView):
     permission_classes = (IsAuthenticated,)
 
@@ -316,47 +298,6 @@ class GenLostAndFound(APIView):
             lost_and_found = LostAndFound.objects.create(type=LostAndFound.FOUND, user=dog.user, dog=dog)
             lost_and_found.save()
         return Response(ResponseFormat.success())
-
-
-class LoopThroughAll(APIView):
-    @staticmethod
-    def get(request):
-        for item in LostAndFound.objects.all():
-            item.note = sentence_generator.sing_sen_maker()
-            item.save()
-        return Response(ResponseFormat.success())
-
-
-class TestNoti(APIView):
-    @staticmethod
-    def get(request):
-        CloudMessenger.send_notification(None, 'hiiiii', 'helloooo', click_action='FoundPostDetail')
-        dog = Dog.objects.all()[0]
-        lostfound = dog.lostandfound_set.all().filter(type=LostAndFound.FOUND).first();
-        return Response(ResponseFormat.success({'lost_and_founds': LostAndFoundSerializer(lostfound).data}))
-
-
-class ReduceFeature(APIView):
-    @staticmethod
-    def get(request):
-        feature_selector.load()
-        instances = models.Instance.objects.all()
-        int = []
-        for instance in instances:
-            reduced_features = feature_selector.reduce_features([feature_extractor.convert_to_float(instance.raw_features)])[0]
-            instance.reduced_features = feature_extractor.convert_to_str(reduced_features)
-            instance.save()
-            # int.append(feature_extractor.convert_to_float(instance.raw_features))
-        # feature_selector.fit(int)
-        # test = feature_selector.reduce_features(int[0])
-        return Response(ResponseFormat.success())
-
-
-class LastNotification(APIView):
-    @staticmethod
-    def get(request):
-        lost_and_found = request.user.notification_set.all().last().lost_and_found
-        return Response(ResponseFormat.success({'notification': LostAndFoundSerializer(lost_and_found).data}))
 
 
 def get_distance(lon1, lat1, lon2, lat2):

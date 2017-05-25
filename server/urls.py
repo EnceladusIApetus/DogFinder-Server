@@ -25,11 +25,8 @@ urlpatterns = [
     url(r'^dog/lost_and_found', dogs.LostAndFoundAPI.as_view()),
     url(r'^dog/gen_lost_and_found', dogs.GenLostAndFound.as_view()),
     url(r'^dog/reduce_features', dogs.ReduceFeature.as_view()),
-    url(r'^dog/last_noti', dogs.LastNotification.as_view()),
     url(r'^dog/$', dogs.Individual.as_view()),
-    url(r'^other/$', dogs.LoopThroughAll.as_view()),
     url(r'^device/fcm_token', device.UpdateFCMToken.as_view()),
-    url(r'^noti', dogs.TestNoti.as_view()),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # urlpatterns = format_suffix_patterns(urlpatterns)

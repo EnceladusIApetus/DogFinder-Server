@@ -14,7 +14,7 @@ def set_data(training_set, testing_set):
 def fit(instances, labels):
     global training_set, model
     model = svm.SVC(kernel='poly', degree=5, C=1.0).fit(instances, labels)
-    joblib.dump(model, 'hello.clf')
+    joblib.dump(model, 'classifier.clf')
 
 def predict(data):
     global model
