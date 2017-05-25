@@ -140,7 +140,7 @@ class User(AbstractBaseUser):
 
 class LostAndFound(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    dog = models.ForeignKey(Dog, on_delete=models.CASCADE, related_name='dogs')
+    dog = models.ForeignKey(Dog, on_delete=models.CASCADE)
     type = models.IntegerField()
     note = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -163,5 +163,9 @@ class Chat(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class Notification(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    lost_and_found = models.ForeignKey(LostAndFound, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 

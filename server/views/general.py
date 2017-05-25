@@ -11,10 +11,6 @@ from server.forms import UploadImageForm, UploadFileForm
 class UploadImage(APIView):
 
     @staticmethod
-    def get(request):
-        return render(request, 'server/upload_image.html')
-
-    @staticmethod
     def post(request):
         form = UploadImageForm(request.POST, request.FILES)
         if form.is_valid():
@@ -27,10 +23,6 @@ class UploadImage(APIView):
 
 
 class UploadFile(APIView):
-
-    @staticmethod
-    def get(request):
-        return render(request, 'server/upload_file.html', {'form': UploadFileForm()})
 
     @staticmethod
     def post(request):
